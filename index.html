@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Student Budget Tracker</title>
+<style>
+:root{--bg:#f4f6f3;--card:#fff;--tx:#17211b;--mu:#5f6d64;--bd:#dde4de;--ac:#0f766e;--ok:#15803d;--bad:#b91c1c;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#101612;--card:#18201b;--tx:#e8efe9;--mu:#9aa9a0;--bd:#2a362e;--ac:#2dd4bf;--ok:#4ade80;--bad:#f87171;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.wrap{max-width:960px;margin:0 auto;padding:16px}
+h1{font-size:1.35rem;margin:0}
+h2{font-size:1rem;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.who{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--mu)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stat small{color:var(--mu);display:block}
+.stat b{font-size:1.35rem}
+.bar{height:10px;background:var(--bd);border-radius:6px;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:0;transition:width .3s}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+label{font-size:.8rem;color:var(--mu);display:flex;flex-direction:column;gap:3px;flex:1 1 120px}
+input,select{padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+button{cursor:pointer;border:0;border-radius:8px;padding:10px 14px;background:var(--ac);color:#fff;font:inherit;font-weight:600}
+@media (prefers-color-scheme:dark){button{color:#06201c}}
+button:disabled{opacity:.6;cursor:default}
+button.ghost{background:var(--bg);color:var(--tx);border:1px solid var(--bd);padding:4px 12px}
+button.out{background:transparent;color:var(--tx);border:1px solid var(--bd);padding:6px 12px}
+button.del{background:transparent;color:var(--bad);padding:4px 8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.chartbox{position:relative;height:260px}
+.items{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd);white-space:nowrap}
+th{color:var(--mu);font-weight:500;font-size:.8rem}
+.qty{display:inline-flex;align-items:center;gap:6px}
+.empty{color:var(--mu);text-align:center;padding:18px}
+#auth{max-width:400px;margin:8vh auto 0}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;background:var(--bg);color:var(--mu);border:1px solid var(--bd)}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+@media (prefers-color-scheme:dark){.tabs button.on{color:#06201c}}
+.fld{margin-bottom:10px}
+.err,.info{font-size:.88rem;margin:8px 0;padding:8px 10px;border-radius:8px}
+.err{background:rgba(185,28,28,.12);color:var(--bad)}
+.info{background:rgba(21,128,61,.12);color:var(--ok)}
+.hide{display:none!important}
+.note{color:var(--mu);font-size:.8rem;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="auth" class="card hide">
+    <h1 style="margin-bottom:4px">Student Budget Tracker</h1>
+    <p style="color:var(--mu);margin:0 0 14px">Log in to see your own expenses. Nobody else can see them.</p>
+    <div class="tabs"><button id="tabIn" class="on" type="button">Log in</button><button id="tabUp" type="button">Sign up</button></div>
+    <div class="fld"><label>Email<input id="email" type="email" autocomplete="email" placeholder="you@example.com"></label></div>
+    <div class="fld"><label>Password<input id="pass" type="password" autocomplete="current-password" placeholder="At least 6 characters"></label></div>
+    <div id="aerr" class="err hide"></div>
+    <div id="ainfo" class="info hide"></div>
+    <button id="go" type="button" style="width:100%">Log in</button>
+    <p class="note">Your data is stored per account and protected by database rules, so each person only sees their own.</p>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="top">
+      <h1>💸 Student Budget Tracker</h1>
+      <div class="who"><span id="me"></span><button class="out" id="logout" type="button">Log out</button></div>
+    </div>
+    <div id="gerr" class="err hide"></div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:12px">
+        <label>Monthly budget (₹)<input id="budget" type="number" min="0" placeholder="e.g. 8000"></label>
+      </div>
+      <div class="stats">
+        <div class="stat"><small>Budget</small><b id="sB">₹0</b></div>
+        <div class="stat"><small>Spent</small><b id="sS">₹0</b></div>
+        <div class="stat"><small>Remaining</small><b id="sR">₹0</b></div>
+      </div>
+      <div class="bar"><i id="pb"></i></div>
+      <small id="msg" style="color:var(--mu)"></small>
+    </div>
+
+    <div class="card">
+      <h2>Add an item</h2>
+      <div class="row">
+        <label style="flex:2 1 160px">Item<input id="name" placeholder="e.g. Tea, Notebook"></label>
+        <label>Price (₹)<input id="price" type="number" min="0" step="0.5"></label>
+        <label style="flex:0 1 90px">Qty<input id="qty" type="number" min="1" value="1"></label>
+        <label>Category<select id="cat"><option>Food</option><option>Rent</option><option>Travel</option><option>Study</option><option>Groceries</option><option>Fun</option><option>Other</option></select></label>
+        <label>Date<input id="date" type="date"></label>
+        <button id="add" type="button">Add</button>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Spending by category</h2><div class="chartbox"><canvas id="c1"></canvas></div></div>
+      <div class="card"><h2>Spending by day</h2><div class="chartbox"><canvas id="c2"></canvas></div></div>
+    </div>
+
+    <div class="card items">
+      <h2>All expenses</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Item</th><th>Category</th><th>Price</th><th>Quantity</th><th>Total</th><th></th></tr></thead>
+        <tbody id="list"></tbody>
+      </table>
+      <div id="empty" class="empty">No expenses yet. Add your first item above.</div>
+    </div>
+  </div>
+  <div id="boot" class="empty">Loading…</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.js"></script>
+<script>
+var SUPABASE_URL='https://fvkkymxkkeaszziqqhqg.supabase.co';
+var SUPABASE_KEY='sb_publishable_n3s_15oKukV7kQCOmMvG4Q_qPNsWlvo'; // public key, safe in the browser
+var $=function(i){return document.getElementById(i)};
+var sb=null,items=[],budget=0,mode='in',c1=null,c2=null,user=null;
+var COLORS=['#14b8a6','#f59e0b','#6366f1','#ef4444','#06b6d4','#ec4899','#84cc16'];
+
+function inr(n){return '₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2})}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function show(id,on){$(id).classList.toggle('hide',!on)}
+
+function friendly(e){
+  var m=((e&&e.message)||'').toLowerCase();
+  if(m.indexOf('invalid login')>-1)return 'Wrong email or password. Please try again.';
+  if(m.indexOf('already registered')>-1||m.indexOf('already been registered')>-1)return 'This email already has an account. Try logging in instead.';
+  if(m.indexOf('email not confirmed')>-1)return 'Please confirm your email first. Check your inbox for the link.';
+  if(m.indexOf('password')>-1&&m.indexOf('6')>-1)return 'Password must be at least 6 characters.';
+  if(m.indexOf('valid email')>-1||m.indexOf('invalid email')>-1)return 'Please enter a valid email address.';
+  if(m.indexOf('rate limit')>-1||m.indexOf('too many')>-1)return 'Too many attempts. Please wait a minute and try again.';
+  if(m.indexOf('fetch')>-1||m.indexOf('network')>-1)return 'Cannot reach the server. Check your internet connection.';
+  return (e&&e.message)?e.message:'Something went wrong. Please try again.';
+}
+function gerr(msg){var b=$('gerr');b.textContent=msg||'';show('gerr',!!msg)}
+
+// ---------- auth ----------
+function setMode(m){
+  mode=m;
+  $('tabIn').classList.toggle('on',m==='in');$('tabUp').classList.toggle('on',m==='up');
+  $('go').textContent=m==='in'?'Log in':'Create account';
+  $('pass').autocomplete=m==='in'?'current-password':'new-password';
+  show('aerr',false);show('ainfo',false);
+}
+$('tabIn').onclick=function(){setMode('in')};
+$('tabUp').onclick=function(){setMode('up')};
+$('pass').addEventListener('keydown',function(e){if(e.key==='Enter')$('go').click()});
+
+$('go').onclick=async function(){
+  var email=$('email').value.trim(),pw=$('pass').value;
+  show('aerr',false);show('ainfo',false);
+  if(!email||!pw){$('aerr').textContent='Please enter your email and password.';show('aerr',true);return}
+  if(pw.length<6){$('aerr').textContent='Password must be at least 6 characters.';show('aerr',true);return}
+  $('go').disabled=true;
+  try{
+    if(mode==='in'){
+      var r=await sb.auth.signInWithPassword({email:email,password:pw});
+      if(r.error)throw r.error;
+    }else{
+      var r2=await sb.auth.signUp({email:email,password:pw});
+      if(r2.error)throw r2.error;
+      if(!r2.data.session){$('ainfo').textContent='Account created. Check your email and click the confirmation link, then log in.';show('ainfo',true);setMode('in')}
+    }
+  }catch(e){$('aerr').textContent=friendly(e);show('aerr',true)}
+  $('go').disabled=false;
+};
+$('logout').onclick=async function(){await sb.auth.signOut()};
+
+async function onSession(session){
+  if(session&&session.user){
+    if(user&&user.id===session.user.id)return;
+    user=session.user;
+    $('me').textContent=user.email;
+    show('boot',false);show('auth',false);show('app',true);
+    $('date').value=today();
+    await loadData();
+  }else{
+    user=null;items=[];budget=0;
+    show('boot',false);show('app',false);show('auth',true);
+    $('pass').value='';
+  }
+}
+
+// ---------- data ----------
+async function loadData(){
+  gerr('');
+  try{
+    var a=await sb.from('expenses').select('*').order('spent_on',{ascending:false}).order('id',{ascending:false});
+    if(a.error)throw a.error;
+    items=a.data.map(function(r){return {id:r.id,name:r.name,price:Number(r.price),qty:r.qty,cat:r.category,date:r.spent_on}});
+    var b=await sb.from('budgets').select('amount').maybeSingle();
+    if(b.error)throw b.error;
+    budget=b.data?Number(b.data.amount):0;
+    $('budget').value=budget||'';
+  }catch(e){gerr('Could not load your data. '+friendly(e))}
+  render();
+}
+
+$('add').onclick=async function(){
+  var name=$('name').value.trim(),price=parseFloat($('price').value),qty=parseInt($('qty').value,10)||1;
+  if(!name||isNaN(price)||price<0){gerr('Enter an item name and a valid price.');return}
+  gerr('');$('add').disabled=true;
+  try{
+    var r=await sb.from('expenses').insert({name:name,price:price,qty:Math.max(1,qty),category:$('cat').value,spent_on:$('date').value||today()}).select().single();
+    if(r.error)throw r.error;
+    var x=r.data;items.unshift({id:x.id,name:x.name,price:Number(x.price),qty:x.qty,cat:x.category,date:x.spent_on});
+    $('name').value='';$('price').value='';$('qty').value=1;$('name').focus();
+    render();
+  }catch(e){gerr('Could not add the item. '+friendly(e))}
+  $('add').disabled=false;
+};
+
+var bt=null;
+$('budget').oninput=function(){
+  budget=parseFloat(this.value)||0;render();
+  clearTimeout(bt);
+  bt=setTimeout(async function(){
+    var r=await sb.from('budgets').upsert({user_id:user.id,amount:budget});
+    if(r.error)gerr('Could not save your budget. '+friendly(r.error));else gerr('');
+  },600);
+};
+
+async function change(id,d){
+  var it=items.find(function(x){return x.id===id});if(!it)return;
+  var q=Math.max(1,it.qty+d);if(q===it.qty)return;
+  var old=it.qty;it.qty=q;render();
+  var r=await sb.from('expenses').update({qty:q}).eq('id',id);
+  if(r.error){it.qty=old;render();gerr('Could not update the quantity. '+friendly(r.error))}
+}
+async function del(id){
+  var r=await sb.from('expenses').delete().eq('id',id);
+  if(r.error){gerr('Could not delete the item. '+friendly(r.error));return}
+  items=items.filter(function(x){return x.id!==id});render();
+}
+$('list').onclick=function(e){
+  var b=e.target.closest('button');if(!b)return;
+  var id=Number(b.dataset.id),a=b.dataset.a;
+  if(a==='p')change(id,1);else if(a==='m')change(id,-1);else if(a==='d')del(id);
+};
+
+// ---------- render ----------
+function render(){
+  var total=0,byCat={},byDay={};
+  items.forEach(function(i){var t=i.price*i.qty;total+=t;byCat[i.cat]=(byCat[i.cat]||0)+t;byDay[i.date]=(byDay[i.date]||0)+t});
+  var left=budget-total;
+  $('sB').textContent=inr(budget);$('sS').textContent=inr(total);$('sR').textContent=inr(left);
+  $('sR').style.color=left<0?css('--bad'):css('--ok');
+  var pct=budget>0?Math.min(100,total/budget*100):0;
+  $('pb').style.width=pct+'%';
+  $('pb').style.background=pct>=100?css('--bad'):pct>=80?'#f59e0b':css('--ok');
+  $('msg').textContent=budget>0?(left<0?'You are over budget by '+inr(-left)+'.':pct>=80?'Careful, you have used '+Math.round(pct)+'% of your budget.':'You have used '+Math.round(pct)+'% of your budget.'):'Set a monthly budget to track your progress.';
+
+  var rows=items.slice().sort(function(a,b){return b.date.localeCompare(a.date)||b.id-a.id});
+  $('list').innerHTML=rows.map(function(i){
+    return '<tr><td>'+i.date+'</td><td>'+esc(i.name)+'</td><td>'+esc(i.cat)+'</td><td>'+inr(i.price)+'</td>'+
+    '<td><span class="qty"><button class="ghost" aria-label="Decrease quantity" data-a="m" data-id="'+i.id+'">−</button><b>'+i.qty+'</b><button class="ghost" aria-label="Increase quantity" data-a="p" data-id="'+i.id+'">+</button></span></td>'+
+    '<td><b>'+inr(i.price*i.qty)+'</b></td><td><button class="del" aria-label="Delete item" data-a="d" data-id="'+i.id+'">✕</button></td></tr>';
+  }).join('');
+  show('empty',!rows.length);
+
+  if(typeof Chart==='undefined'||!$('app')||$('app').classList.contains('hide'))return;
+  var tx=css('--tx'),gr=css('--bd');
+  var cats=Object.keys(byCat),days=Object.keys(byDay).sort().slice(-10);
+  if(c1)c1.destroy();if(c2)c2.destroy();
+  c1=new Chart($('c1'),{type:'doughnut',data:{labels:cats,datasets:[{data:cats.map(function(c){return byCat[c]}),backgroundColor:COLORS,borderColor:css('--card')}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:tx}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+inr(c.parsed)}}}}}});
+  c2=new Chart($('c2'),{type:'bar',data:{labels:days,datasets:[{label:'Spent (₹)',data:days.map(function(d){return byDay[d]}),backgroundColor:css('--ac'),borderRadius:6}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tx},grid:{color:gr}},y:{beginAtZero:true,ticks:{color:tx},grid:{color:gr}}}}});
+}
+if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+
+// ---------- start ----------
+(async function(){
+  if(typeof supabase==='undefined'){$('boot').textContent='Could not load the login service. Check your internet connection and reload.';return}
+  sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  sb.auth.onAuthStateChange(function(ev,session){setTimeout(function(){onSession(session)},0)});
+  var s=await sb.auth.getSession();
+  onSession(s.data.session);
+})();
+</script>
+</body>
+</html>
